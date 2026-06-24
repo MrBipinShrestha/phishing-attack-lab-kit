@@ -433,7 +433,7 @@ Found a phishing technique we missed? Have a real-world case study to share?
 ## 👤 Attribution
 
 **Repository Created:** Bipin Shrestha  
-**Based on:** MIT503 Information Security coursework (Social Engineering Lab)  
+**Focus Area:** Phishing Attack Methodology & Social Engineering Defence  
 **Last Updated:** June 2024  
 **Maintained for:** Security professionals, educators, SOC teams  
 
