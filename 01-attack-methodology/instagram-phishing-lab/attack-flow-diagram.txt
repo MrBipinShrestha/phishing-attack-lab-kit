@@ -1,0 +1,25 @@
+INSTAGRAM CREDENTIAL HARVESTER - ATTACK FLOW
+=============================================
+
+[Attacker - Kali Linux]
+        |
+        v
+[Launch SET > Website Attack Vectors]
+        |
+        v
+[Credential Harvester > Site Cloner]
+        |
+        v
+[Clone: http://instagram.com]
+        |
+        v
+[Host fake page on 192.168.x.x:80]
+        |
+        v
+[Victim enters username + password]
+        |
+        v
+[Credentials displayed on attacker terminal]
+
+=============================================
+DEFENCE: MFA | Password Manager | HTTPS Check
