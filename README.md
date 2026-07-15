@@ -1,251 +1,329 @@
 # 🎣 Phishing Detection & Email Forensics Lab
 
-![Python](https://img.shields.io/badge/Python-Analysis-blue?style=for-the-badge)
-![MITRE ATT&CK](https://img.shields.io/badge/MITRE-T1566-red?style=for-the-badge)
-![Focus](https://img.shields.io/badge/Focus-Email_Security-purple?style=for-the-badge)
+![Security](https://img.shields.io/badge/Focus-Phishing%20Investigation-red)
+![SOC](https://img.shields.io/badge/Role-SOC%20Analyst-blue)
+![MITRE](https://img.shields.io/badge/Framework-MITRE%20ATT%26CK-orange)
+![Python](https://img.shields.io/badge/Automation-Python-green)
 
-> **Ethical hacking lab documenting phishing attack methodology, email header forensics, OSINT-based domain analysis, and SOC detection controls for email-based threats.**
->
-> This lab builds the skills to detect, analyze, and respond to one of the most common initial access vectors in real-world breaches.
+A hands-on **SOC phishing investigation and detection engineering laboratory** focused on analysing malicious emails, identifying phishing indicators, performing OSINT investigation, mapping attacker techniques, and developing defensive controls.
 
----
-
-## 🧠 Security Engineering Objective
-
-This lab answers a critical SOC question:
-
-> "How do attackers craft convincing phishing campaigns, and what forensic evidence can a SOC analyst use to detect and investigate them?"
-
-To validate this, I built a complete phishing analysis framework covering:
-
-- Attack methodology (how phishing campaigns are built)
-- Email header forensics (how to trace and verify email origin)
-- OSINT domain analysis (how to investigate malicious domains)
-- SOC detection controls (how to build detection logic)
-
----
-
-## 🏗️ Phishing Attack Lifecycle
+This project demonstrates the workflow followed by security analysts when investigating phishing incidents:
 
 ```
-┌────────────────────────────────────────────────────────┐
-│                  Phishing Attack Chain                  │
-└────────────────────────────────────────────────────────┘
-
-Phase 1: Reconnaissance       Phase 2: Infrastructure
-┌─────────────────┐           ┌─────────────────────────┐
-│ OSINT Target    │           │ Register lookalike domain│
-│ Research        │           │ paypa1.com vs paypal.com │
-│ - LinkedIn      │──────────►│ Set up phishing page    │
-│ - Email format  │           │ Configure fake MX records│
-│ - Org chart     │           └──────────────┬──────────┘
-└─────────────────┘                          │
-                                             ▼
-Phase 3: Delivery             Phase 4: Credential Capture
-┌─────────────────┐           ┌─────────────────────────┐
-│ Craft email     │           │ Victim enters creds     │
-│ - Spoofed From  │──────────►│ Data sent to attacker   │
-│ - Urgency hook  │           │ Redirect to real site   │
-│ - Malicious link│           │ Victim unaware          │
-└─────────────────┘           └─────────────────────────┘
+Suspicious Email
+        ↓
+Email Header Analysis
+        ↓
+IOC Extraction
+        ↓
+Threat Intelligence Lookup
+        ↓
+MITRE ATT&CK Mapping
+        ↓
+Risk Assessment
+        ↓
+Detection & Prevention
 ```
 
 ---
 
-## 🔍 Email Header Forensics
+# 🎯 Project Objective
 
-### Anatomy of a Phishing Email Header
+Phishing remains one of the most common initial access techniques used by attackers.
+
+This lab focuses on developing practical skills in:
+
+- Phishing email investigation
+- Email header analysis
+- Threat intelligence gathering
+- Domain investigation
+- IOC identification
+- MITRE ATT&CK mapping
+- Security awareness controls
+- Detection engineering
+
+---
+
+# 🔍 Investigation Workflow
+
+## 1. Email Header Analysis
+
+Analysed email metadata to identify suspicious indicators:
+
+- Sender information
+- Return-Path
+- Received headers
+- Mail servers
+- Authentication results
+
+Investigated:
 
 ```
-Received: from mail.phish-domain.com (192.168.1.100)
-          by legitimate-mail.com with ESMTP
-Return-Path: <attacker@phish-domain.com>
-From: "PayPal Security" <security@paypa1.com>      ← Spoofed display name
-Reply-To: attacker@different-domain.com             ← Different reply domain
-X-Originating-IP: 45.33.32.156                     ← Actual sender IP
-Authentication-Results: spf=fail                    ← SPF failure
-                        dkim=fail                   ← DKIM failure
-                        dmarc=fail                  ← DMARC failure
+SPF
+DKIM
+DMARC
 ```
 
-### Header Analysis Script
-```python
-import email
-import re
-from datetime import datetime
+Example findings:
 
-def analyze_email_headers(raw_email):
-    msg = email.message_from_string(raw_email)
-    
-    analysis = {
-        'from': msg.get('From'),
-        'reply_to': msg.get('Reply-To'),
-        'return_path': msg.get('Return-Path'),
-        'received_from': extract_originating_ip(msg),
-        'spf_result': extract_auth_result(msg, 'spf'),
-        'dkim_result': extract_auth_result(msg, 'dkim'),
-        'dmarc_result': extract_auth_result(msg, 'dmarc'),
-    }
-    
-    # Flag suspicious indicators
-    flags = []
-    if analysis['from'] != analysis['return_path']:
-        flags.append('MISMATCH: From ≠ Return-Path')
-    if analysis['spf_result'] == 'fail':
-        flags.append('FAIL: SPF authentication failed')
-    if analysis['dkim_result'] == 'fail':
-        flags.append('FAIL: DKIM signature invalid')
-    if analysis['dmarc_result'] == 'fail':
-        flags.append('FAIL: DMARC policy violation')
-    
-    analysis['flags'] = flags
-    analysis['risk_score'] = len(flags) * 25  # 0-100
-    
-    return analysis
+```
+SPF: Failed
+DKIM: Failed
+DMARC: Failed
+
+Risk Level: High
 ```
 
 ---
 
-## 📊 OSINT Domain Analysis
+# 🌐 2. OSINT & Domain Investigation
 
-### Indicators to Investigate
+Performed external intelligence gathering using:
 
-```python
-# Domain age check (new domains = suspicious)
-# whois lookup for registration date
-# Typosquatting patterns
-SUSPICIOUS_PATTERNS = [
-    r'paypa[l1]',       # paypal → paypa1
-    r'go{2,}gle',       # google → gooogle  
-    r'micros0ft',       # microsoft → micros0ft
-    r'arnazon',         # amazon → arnazon
-]
+## WHOIS Analysis
 
-# Check domain reputation
-# VirusTotal, URLhaus, PhishTank
-# Certificate transparency logs
-# Historical WHOIS data
+Investigated:
+
+- Domain registration date
+- Registrar information
+- Ownership details
+
+Suspicious indicators:
+
+- Newly registered domains
+- Hidden ownership
+- Similarity to legitimate brands
+
+
+## DNS Analysis
+
+Checked:
+
+- MX records
+- TXT records
+- Domain configuration
+
+
+## Reputation Checking
+
+Used:
+
+- VirusTotal
+- MXToolbox
+- Domain reputation services
+
+---
+
+# 🧪 3. Phishing Indicator Analysis
+
+Identified common phishing characteristics:
+
+## Email Indicators
+
+- Urgent language
+- Suspicious attachments
+- Fake sender identity
+- Credential harvesting links
+- Social engineering techniques
+
+
+## URL Indicators
+
+- Typosquatting domains
+- Suspicious redirects
+- Look-alike domains
+- Newly registered domains
+
+
+## Attachment Indicators
+
+- Malicious file types
+- Macro-enabled documents
+- Executable files
+
+---
+
+# 🧠 MITRE ATT&CK Mapping
+
+Mapped phishing activities to attacker behaviour:
+
+| Technique | ID | Description |
+|---|---|---|
+| Phishing | T1566 | Initial Access |
+| Spearphishing Link | T1566.002 | Malicious URL delivery |
+| Spearphishing Attachment | T1566.001 | Malicious attachment |
+| Phishing for Information | T1598 | Credential harvesting |
+| Masquerading | T1036 | Identity deception |
+
+---
+
+# 🛡️ Detection Engineering
+
+The lab includes defensive recommendations for SOC monitoring.
+
+Detection opportunities:
+
+## Email Security
+
+- Detect failed SPF/DKIM/DMARC
+- Monitor suspicious domains
+- Analyse malicious attachments
+
+
+## SIEM Monitoring
+
+Potential Wazuh/SIEM detections:
+
+```
+Suspicious email attachment
++
+Malicious domain
++
+User interaction
+=
+Security Alert
 ```
 
-### Domain Reputation Checks
+---
 
-| Indicator | Tool | SOC Value |
-|-----------|------|-----------|
-| Domain age | WHOIS | New domains = high risk |
-| IP reputation | VirusTotal | Known bad IPs |
-| Malware hosting | URLhaus | Active phishing pages |
-| Certificate | crt.sh | Lookalike cert detection |
-| Passive DNS | SecurityTrails | Historical infrastructure |
+# 📋 Investigation Cases
+
+The lab contains practical phishing scenarios:
+
+| Case | Investigation |
+|---|---|
+| Case 01 | Suspicious email header analysis |
+| Case 02 | Malicious domain investigation |
+| Case 03 | Credential phishing detection |
+| Case 04 | Attachment analysis |
+| Case 05 | SOC response recommendations |
+
+Each investigation includes:
+
+- Evidence collection
+- Technical analysis
+- Indicators of Compromise (IOCs)
+- Risk assessment
+- Recommended mitigation
 
 ---
 
-## 🚨 SOC Detection Controls
+# 📁 Project Structure
 
-### Email Gateway Rules
-
-```yaml
-# Detect SPF/DKIM/DMARC failures
-rule:
-  name: "Email Authentication Failure"
-  condition: spf=fail AND dkim=fail AND dmarc=fail
-  action: quarantine
-  severity: HIGH
-
-# Detect mismatched sender domains
-rule:
-  name: "From/Reply-To Domain Mismatch"
-  condition: from_domain != replyto_domain
-  action: flag_for_review
-  severity: MEDIUM
-
-# Detect lookalike domains
-rule:
-  name: "Typosquatting Domain Detection"
-  condition: levenshtein_distance(domain, known_brands) <= 2
-  action: block
-  severity: HIGH
 ```
+phishing-attack-lab-kit/
 
-### Wazuh SIEM Rules
-```xml
-<rule id="100200" level="10">
-  <match>spf=fail dkim=fail dmarc=fail</match>
-  <description>Email authentication triple failure — likely phishing</description>
-  <mitre>
-    <id>T1566</id>
-  </mitre>
-</rule>
+│
+├── investigations/
+│   ├── case-01-header-analysis.md
+│   ├── case-02-domain-analysis.md
+│
+├── screenshots/
+│   ├── email-analysis/
+│   ├── osint-results/
+│
+├── scripts/
+│   └── phishing_analysis.py
+│
+├── reports/
+│
+├── README.md
+└── requirements.txt
 ```
 
 ---
 
-## 📊 MITRE ATT&CK Mapping
+# 🛠️ Tools Used
 
-| Tactic | Technique | Sub-technique | Scenario |
-|--------|-----------|---------------|---------|
-| Initial Access | T1566 | T1566.001 | Spear phishing attachment |
-| Initial Access | T1566 | T1566.002 | Spear phishing link |
-| Reconnaissance | T1598 | T1598.003 | Phishing for credentials |
-| Resource Development | T1583 | T1583.001 | Domain registration |
-| Defense Evasion | T1036 | T1036.005 | Lookalike domain masquerade |
+## Investigation
 
----
+- WHOIS
+- MXToolbox
+- VirusTotal
 
-## 🛡️ Prevention Controls Matrix
+## Security Analysis
 
-| Control | Coverage | Implementation |
-|---------|----------|----------------|
-| SPF records | Medium | DNS TXT record |
-| DKIM signing | High | Email server config |
-| DMARC policy | High | DNS TXT + enforcement |
-| Email filtering | High | Gateway appliance |
-| Security awareness | High | Training + simulation |
-| MFA | Critical | Identity provider |
-| URL sandboxing | High | Email gateway |
+- Email header analysers
+- DNS analysis tools
+- OSINT techniques
 
----
+## Automation
 
-## 🧰 Tools Used
+- Python
 
-| Tool | Purpose |
-|------|---------|
-| Python | Email header analysis scripts |
-| WHOIS | Domain registration lookup |
-| VirusTotal | Domain/IP reputation check |
-| PhishTank | Known phishing database |
-| MXToolbox | Email authentication verification |
-| crt.sh | Certificate transparency search |
+## Detection
+
+- Wazuh
+- MITRE ATT&CK
 
 ---
 
-## 📸 Evidence
+# 🚨 SOC Incident Response Workflow
 
-Screenshots in `screenshots/` folder:
-- Email header analysis output
-- OSINT domain investigation results
-- Detection rule firing in gateway
-- Phishing page replica analysis
+Example response process:
 
----
-
-## ⚠️ Ethical Notice
-
-All phishing simulations conducted in isolated lab environment with explicit authorization. Techniques documented for defensive education and SOC analyst training only. Always obtain written authorization before conducting phishing simulations against real users.
-
----
-
-## 🔮 Extensions
-
-- [ ] Automated phishing detection pipeline
-- [ ] ML-based phishing URL classifier
-- [ ] Business Email Compromise (BEC) detection
-- [ ] Lookalike domain monitoring system
-- [ ] Threat intelligence feed integration
+```
+User Reports Email
+        ↓
+SOC Analyst Investigation
+        ↓
+Extract Indicators
+        ↓
+Threat Intelligence Check
+        ↓
+Determine Severity
+        ↓
+Block Domain / IOC
+        ↓
+Notify Users
+        ↓
+Document Incident
+```
 
 ---
 
-## 📬 Contact
+# 🧪 Skills Demonstrated
 
-**GitHub:** [github.com/MrBipinShrestha](https://github.com/MrBipinShrestha)
-**LinkedIn:** [linkedin.com/in/shresthabipin](https://www.linkedin.com/in/shresthabipin)
-**Location:** Sydney, Australia
+This project demonstrates:
+
+✅ Phishing investigation  
+✅ Email forensics  
+✅ OSINT techniques  
+✅ Threat intelligence analysis  
+✅ IOC extraction  
+✅ MITRE ATT&CK mapping  
+✅ Detection engineering mindset  
+✅ Incident documentation  
+
+---
+
+# 🚀 Future Improvements
+
+Planned enhancements:
+
+- Integrate phishing email sandboxing
+- Add automated IOC extraction
+- Add VirusTotal API automation
+- Create Sigma detection rules
+- Integrate with SIEM workflows
+- Add SOAR response automation
+
+---
+
+# 👤 Author
+
+## Bipin Shrestha
+
+Cybersecurity Student | SOC Analyst | Detection Engineering
+
+📍 Sydney, Australia 🇦🇺
+
+GitHub:
+https://github.com/MrBipinShrestha
+
+LinkedIn:
+https://www.linkedin.com/in/shresthabipin/
+
+---
+
+⭐ If you find this project useful, consider starring the repository.
